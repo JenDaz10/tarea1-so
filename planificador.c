@@ -372,7 +372,12 @@ int main(int argc, char **argv) {
     leer_plan(argv[1], &plan);
 
     int K = atoi(argv[2]);
+    if (K <= 0) {
+    fprintf(stderr, "Error: K debe ser mayor que 0\n");
+    return 1;
+    }
     printf("K = %d\n", K);
+    fflush(stdout);
 
     mapear_dependencias(&plan);
     construir_dependientes(&plan);
