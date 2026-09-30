@@ -13,7 +13,6 @@
 
 #define MAX_LINE 1024
 #define MAX_FIELDS 16
-#define MAX_FDS 4096
 
 
 typedef struct {
@@ -271,6 +270,13 @@ void coordinar(Plan *plan, int K) {
     int terminadas = 0;
     int activos = 0;
 
+    struct pollfd *fds = malloc(K * sizeof(struct pollfd));
+    int *mapa = malloc(K * sizeof(int));
+    if (!fds || !mapa) {
+        perror("malloc");
+        exit(1);
+    }
+
     while (terminadas < total && !interrumpido) {
 
         for (int i = 0; i < total && activos < K; i++) {
@@ -281,10 +287,8 @@ void coordinar(Plan *plan, int K) {
 
         if (activos == 0) break;
 
-        struct pollfd fds[MAX_FDS];
-        int mapa[MAX_FDS];
         int nfds = 0;
-        for (int i = 0; i < total && nfds < MAX_FDS; i++) {
+        for (int i = 0; i < total && nfds < K; i++) {
             if (plan->tareas[i].estado == 1) {
                 fds[nfds].fd = plan->tareas[i].pipe_lectura_padre[0];
                 fds[nfds].events = POLLIN;
@@ -329,6 +333,7 @@ void coordinar(Plan *plan, int K) {
                 fprintf(stderr, "[padre] tarea %s FALLÓ\n", t->id);
                 t->estado = 3;
                 terminadas++;
+
                 int *cola = malloc(total * sizeof(int));
                 int ini = 0, fin = 0;
                 for (int j = 0; j < t->num_dependientes; j++)
@@ -349,16 +354,25 @@ void coordinar(Plan *plan, int K) {
     }
 
     if (interrumpido) {
-        printf("\n[padre] SIGINT recibido, abortando hijos...\n");
+        printf("\n[padre] SIGINT recibido, abortando todas las actividades...\n");
+
         for (int i = 0; i < total; i++)
             if (plan->tareas[i].estado == 1)
                 kill(plan->tareas[i].pid, SIGTERM);
+
         for (int i = 0; i < total; i++)
             if (plan->tareas[i].estado == 1) {
                 waitpid(plan->tareas[i].pid, NULL, 0);
                 plan->tareas[i].estado = 4;
             }
+
+        for (int i = 0; i < total; i++)
+            if (plan->tareas[i].estado == 0)
+                plan->tareas[i].estado = 4;
     }
+
+    free(fds);
+    free(mapa);
 }
 
 int main(int argc, char **argv) {
