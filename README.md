@@ -26,6 +26,8 @@ Por ejemplo:
 
 En este caso, el programa utiliza `plan.txt` como archivo de entrada y permite hasta 3 procesos ejecutándose de forma concurrente.
 
+El valor de `K` debe ser mayor que 0. Si se entrega un valor inválido, el programa muestra un mensaje de error y termina.
+
 ## Formato del archivo de entrada
 
 Cada línea del archivo representa una actividad y tiene el siguiente formato:
@@ -120,7 +122,9 @@ Para manejar `Ctrl+C` se utiliza `sigaction`.
 
 El manejador de la señal solamente cambia una bandera. Luego, cuando el proceso principal vuelve a ejecutar su flujo normal, revisa esa bandera.
 
-Si se recibió `SIGINT`, el padre envía `SIGTERM` a los procesos hijos que siguen activos, espera que terminen y finalmente finaliza el programa.
+Si se recibió `SIGINT`, el padre envía `SIGTERM` a los procesos hijos activos, espera que terminen con `waitpid`, y marca como abortadas tanto esas actividades como las que aún no habían comenzado. De esta forma, al recibir la señal, ninguna actividad queda en estado pendiente.
+
+Finalmente, el programa imprime el resumen con el estado de todas las actividades.
 
 ### Simulación de duración
 
